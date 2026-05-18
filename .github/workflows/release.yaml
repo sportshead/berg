@@ -37,7 +37,7 @@ jobs:
         if: steps.semrel.outputs.version != ''
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/bergctf/platform/api
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/api
           flavor: |
             latest=auto
           tags: |
@@ -57,7 +57,7 @@ jobs:
         if: steps.semrel.outputs.version != ''
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/bergctf/platform/frontend
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/frontend
           flavor: |
             latest=auto
           tags: |
