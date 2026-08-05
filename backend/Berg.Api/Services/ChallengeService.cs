@@ -114,7 +114,7 @@ public class ChallengeService(
             var challengeName = ns.GetLabel(ChallengeLabel);
             var instanceId = Guid.Parse(ns.GetLabel(InstanceIdLabel));
 
-            logger.LogInformation("Removing instance {InstanceId} by player {PlayerId} because it reached the instance timeout", ns.Name(), playerId);
+            logger.LogInformation("Removing instance {InstanceId} by player {PlayerId} because it reached the instance timeout", instanceId, playerId);
             await kubernetes.DeleteNamespaceAsync(ns.Name(), cancellationToken: cancellationToken);
 
             var _ = mediator.Publish(new InstanceChangeNotification
@@ -138,7 +138,7 @@ public class ChallengeService(
             }
             else
             {
-                logger.LogError("Instance {InstanceId} was terminated due to timeout but did not have a corresponding database instance entry.", instanceId);
+                logger.LogError("Instance {InstanceId} of player {PlayerId} was terminated due to timeout but did not have a corresponding database instance entry.", instanceId, playerId);
             }
             metrics.InstanceStopped();
         }
@@ -822,7 +822,7 @@ public class ChallengeService(
                         }
                     },
                     BinaryData = new Dictionary<string, byte[]>() {
-                        { "executable", dynamicFlagExecutableService.GenerateExecutable(dynamicFlag ?? "invalid{executable-flag-error}") }
+                        { "executable", dynamicFlagExecutableService.GenerateExecutable(dynamicFlag ?? "invalid{executable-flag-error}", playerId) }
                     },
                 };
                 try
@@ -1076,7 +1076,7 @@ public class ChallengeService(
             }
         }
 
-        logger.LogInformation("Created instance of challenge: {}", challengeName);
+        logger.LogInformation("Created instance {InstanceId} of challenge {ChallengeName} for player {PlayerId}", instanceId, challengeName, playerId);
         var instance = new Instance { Id = instanceId, PlayerId = playerId, ChallengeName = challengeName, InstanceState = InstanceState.Starting, StartedAt = ns.Metadata.CreationTimestamp };
 
         var _ = mediator.Publish(new InstanceChangeNotification
@@ -1124,7 +1124,7 @@ public class ChallengeService(
         }
 
         await kubernetes.DeleteNamespaceAsync(ns.Name(), gracePeriodSeconds: 0, cancellationToken: cancellationToken);
-        logger.LogInformation("Terminated instance {InstanceId}", instanceId);
+        logger.LogInformation("Terminated instance {InstanceId} of player {PlayerId}", instanceId, playerId);
 
         var dbInstance = dbContext.Instances.SingleOrDefault(i => i.Id == instanceId);
         if (dbInstance != null)
@@ -1135,7 +1135,7 @@ public class ChallengeService(
         }
         else
         {
-            logger.LogError("Instance {InstanceId} was terminated due to user request but did not have a corresponding database instance entry.", instanceId);
+            logger.LogError("Instance {InstanceId} of player {PlayerId} was terminated due to user request but did not have a corresponding database instance entry.", instanceId, playerId);
         }
         metrics.InstanceStopped();
 

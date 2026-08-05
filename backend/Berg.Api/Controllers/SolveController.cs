@@ -216,7 +216,7 @@ public class SolveController(
                 Value = trimmedFlag
             });
             dbContext.SaveChanges();
-            logger.LogInformation("Player {PlayerId} submitted an invalid flag for challenge {ChallengeName}", playerId, challengeName);
+            logger.LogInformation("Player {PlayerId} submitted an invalid flag for challenge {ChallengeName}: {Flag}", playerId, challengeName, trimmedFlag);
             metrics.InvalidSubmission(challengeName, playerId);
             return BadRequest(new ProblemDetails
             {

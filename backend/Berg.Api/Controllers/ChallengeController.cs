@@ -15,6 +15,7 @@ using OrasProject.Oras.Registry;
 using OrasProject.Oras.Registry.Remote;
 using OrasProject.Oras.Registry.Remote.Auth;
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
@@ -93,9 +94,11 @@ public class ChallengeController(
     {
         var utcNow = DateTime.UtcNow;
         var isAdmin = User.HasClaim(OpenIddictConstants.Claims.Role, Constants.Roles.Admin);
+        // Anonymous access can be allowed for this endpoint, so there is not always a player id
+        var playerId = User.FindFirstValue(OpenIddictConstants.Claims.Subject);
         if (utcNow < ctfConfig.Start && !isAdmin)
         {
-            logger.LogWarning("Non admin user tried to access handout before ctf start");
+            logger.LogWarning("Player {PlayerId} tried to access handout {Index} of challenge {ChallengeName} before ctf start", playerId, index, name);
             return BadRequest(new ProblemDetails
             {
                 Title = "Bad Request",
@@ -193,7 +196,7 @@ public class ChallengeController(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Exception while trying to fetch handout from OCI registry");
+                logger.LogError(ex, "Exception while trying to fetch handout {Index} of challenge {ChallengeName} from OCI registry for player {PlayerId}", index, name, playerId);
                 return Problem(title: "Server error", detail: "Error fetching handout from upstream.");
             }
         }

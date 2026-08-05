@@ -39,7 +39,7 @@ public class WebSocketMessage<T> : WebSocketMessage
 }
 
 public class WebSocketService(
-    ILogger<ChallengeService> logger,
+    ILogger<WebSocketService> logger,
     BergMetrics metrics,
     OpenIddictValidationService openIddictValidationService,
     CtfConfig ctfConfig,
@@ -102,7 +102,7 @@ public class WebSocketService(
                             var principal = await openIddictValidationService.ValidateAccessTokenAsync(token ?? "", connection.CancellationTokenSource.Token);
                             connection.PlayerId = Guid.Parse(principal.FindFirstValue(OpenIddictConstants.Claims.Subject)!);
                             connection.ExpiresAt = principal.GetExpirationDate()?.UtcDateTime;
-                            logger.LogDebug("WebSocket connection {ConnectionId} was authenticated", connection.Id);
+                            logger.LogDebug("WebSocket connection {ConnectionId} was authenticated as player {PlayerId}", connection.Id, connection.PlayerId);
                         }
                         catch (Exception ex)
                         {
@@ -116,7 +116,7 @@ public class WebSocketService(
                 else
                 {
                     var messageBytes = SerializeMessage("error", "Invalid message type");
-                    logger.LogDebug("WebSocket connection {ConnectionId} got invalid message type: {WebSocketMessageType}", connection.Id, webSocketMessage.Type);
+                    logger.LogDebug("WebSocket connection {ConnectionId} of player {PlayerId} got invalid message type: {WebSocketMessageType}", connection.Id, connection.PlayerId, webSocketMessage.Type);
                     await SendMessage(connection, messageBytes);
                 }
             }
@@ -160,10 +160,11 @@ public class WebSocketService(
                 continue;
 
             // Downgrade socket by removing player association, keep socket alive to still receive public events
+            var previousPlayerId = conn.PlayerId;
             conn.PlayerId = null;
             conn.ExpiresAt = null;
             await SendPlayerIdMessage(conn);
-            logger.LogDebug("WebSocket connection {ConnectionId} was unauthenticated", conn.Id);
+            logger.LogDebug("WebSocket connection {ConnectionId} of player {PlayerId} was unauthenticated", conn.Id, previousPlayerId);
         }
     }
 
@@ -184,7 +185,7 @@ public class WebSocketService(
         }
         catch (Exception ex)
         {
-            logger.LogDebug(ex, "WebSocket connection {ConnectionId} had an exception calling SendMessage<T>()", connection.Id);
+            logger.LogDebug(ex, "WebSocket connection {ConnectionId} of player {PlayerId} had an exception calling SendMessage<T>()", connection.Id, connection.PlayerId);
             await CloseConnection(connection);
         }
         finally
@@ -231,7 +232,7 @@ public class WebSocketService(
         }
         catch (WebSocketException ex)
         {
-            logger.LogError(ex, "WebSocket connection {ConnectionId} had an exception calling ReceiveMessage<T>()", connection.Id);
+            logger.LogError(ex, "WebSocket connection {ConnectionId} of player {PlayerId} had an exception calling ReceiveMessage<T>()", connection.Id, connection.PlayerId);
             await CloseConnection(connection);
         }
         return null;
@@ -244,7 +245,7 @@ public class WebSocketService(
         {
             if (_connections.Remove(connection))
             {
-                logger.LogDebug("WebSocket connection {ConnectionId} closed", connection.Id);
+                logger.LogDebug("WebSocket connection {ConnectionId} of player {PlayerId} closed", connection.Id, connection.PlayerId);
                 metrics.WebSocketStopped();
             }
         }

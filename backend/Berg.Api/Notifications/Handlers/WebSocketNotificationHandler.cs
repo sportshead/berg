@@ -37,32 +37,32 @@ public class WebSocketNotificationHandler(
         var adminIds = dbContext.Players.Where(p => p.Roles != null && p.Roles.Contains(Constants.Roles.Admin)).Select(p => p.Id).ToHashSet();
         if (solve.IsAdmin)
         {
-            logger.LogDebug("Messaging only admins about the admin solve.");
+            logger.LogDebug("Messaging only admins about the admin solve of player {PlayerId}.", solve.PlayerId);
             await webSocketService.PushEvent("solve", dtoSolve, adminIds.Contains);
             return;
         }
 
         if (!solve.IsFrozen)
         {
-            logger.LogDebug("Messaging all players about this solve.");
+            logger.LogDebug("Messaging all players about the solve of player {PlayerId}.", solve.PlayerId);
             await webSocketService.PushEventAll("solve", dtoSolve);
         }
         else if (ctfConfig.Teams)
         {
-            logger.LogDebug("Only messaging specific team players and admins due to freeze.");
+            logger.LogDebug("Only messaging team {TeamId} of player {PlayerId} and admins due to freeze.", solve.TeamId, solve.PlayerId);
             var teamPlayerIds = dbContext.Players.Where(p => p.TeamId == solve.TeamId).Select(p => p.Id).ToHashSet();
             await webSocketService.PushEvent("solve", dtoSolve, p => teamPlayerIds.Contains(p) || adminIds.Contains(p));
         }
         else
         {
-            logger.LogDebug("Only messaging specific player and admins due to freeze.");
+            logger.LogDebug("Only messaging player {PlayerId} and admins due to freeze.", solve.PlayerId);
             await webSocketService.PushEvent("solve", dtoSolve, p => solve.PlayerId == p || adminIds.Contains(p));
         }
     }
 
     public async Task Handle(PlayerCreateNotification notification, CancellationToken cancellationToken)
     {
-        logger.LogDebug("Sending player created message to websocket clients.");
+        logger.LogDebug("Sending created message for player {PlayerId} to websocket clients.", notification.DbPlayer.Id);
         var publicCustomAttributeNames = PlayerController.GetPublicCustomAttributeNames(ctfConfig);
         var player = PlayerController.ToModelPlayer(notification.DbPlayer, publicCustomAttributeNames);
         await webSocketService.PushEventAll("player", player);
@@ -70,7 +70,7 @@ public class WebSocketNotificationHandler(
 
     public async Task Handle(PlayerUpdateNotification notification, CancellationToken cancellationToken)
     {
-        logger.LogDebug("Sending player updated message to websocket clients.");
+        logger.LogDebug("Sending updated message for player {PlayerId} to websocket clients.", notification.DbPlayer.Id);
         var publicCustomAttributeNames = PlayerController.GetPublicCustomAttributeNames(ctfConfig);
         var player = PlayerController.ToModelPlayer(notification.DbPlayer, publicCustomAttributeNames);
         await webSocketService.PushEventAll("player", player);
@@ -78,7 +78,7 @@ public class WebSocketNotificationHandler(
 
     public async Task Handle(PlayerDeleteNotification notification, CancellationToken cancellationToken)
     {
-        logger.LogDebug("Sending player delete message to websocket clients.");
+        logger.LogDebug("Sending delete message for player {PlayerId} to websocket clients.", notification.PlayerId);
         await webSocketService.PushEventAll("player-delete", notification.PlayerId);
     }
 
@@ -155,7 +155,7 @@ public class WebSocketNotificationHandler(
 
     public async Task Handle(InstanceChangeNotification notification, CancellationToken cancellationToken)
     {
-        logger.LogDebug("Sending instance change message.");
+        logger.LogDebug("Sending instance change message for instance {InstanceId} of player {PlayerId}.", notification.Instance.Id, notification.Instance.PlayerId);
         var playerIdsToNotify = dbContext.Players
             .Where(p => p.Roles != null && p.Roles.Contains(Constants.Roles.Admin))
             .Select(p => p.Id)
