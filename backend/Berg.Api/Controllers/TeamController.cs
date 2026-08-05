@@ -33,12 +33,11 @@ public partial class TeamController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<List<Team>>> ListTeams(CancellationToken cancel)
     {
-        return Ok(await dbContext.Teams.Select(t => new Team
-        {
-            Id = t.Id,
-            Name = t.Name,
-            Players = t.Players.Select(p => p.Id).ToList()
-        }).ToListAsync(cancel));
+        var teams = await dbContext.Teams
+            .Include(t => t.Players)
+            .ThenInclude(p => p.Attributes)
+            .ToListAsync(cancel);
+        return Ok(teams.Select(ToModelTeam).ToList());
     }
 
     [HttpGet]
@@ -48,15 +47,13 @@ public partial class TeamController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<List<Team>>> GetTeam([FromRoute] Guid id, CancellationToken cancel)
     {
-        var team = await dbContext.Teams.Select(t => new Team
-        {
-            Id = t.Id,
-            Name = t.Name,
-            Players = t.Players.Select(p => p.Id).ToList()
-        }).FirstOrDefaultAsync(t => t.Id == id, cancel);
+        var team = await dbContext.Teams
+            .Include(t => t.Players)
+            .ThenInclude(p => p.Attributes)
+            .FirstOrDefaultAsync(t => t.Id == id, cancel);
         if (team == null)
             return NotFound();
-        return Ok(team);
+        return Ok(ToModelTeam(team));
     }
 
     [HttpGet]
@@ -89,6 +86,7 @@ public partial class TeamController(
 
         var dbTeam = dbContext.Teams
             .Include(t => t.Players)
+            .ThenInclude(p => p.Attributes)
             .Single(t => t.Id == player.TeamId);
         return Ok(new CurrentTeam
         {
@@ -96,6 +94,7 @@ public partial class TeamController(
             Name = player.Team.Name,
             JoinToken = player.Team.JoinToken,
             Players = dbTeam.Players.Select(p => p.Id).ToList(),
+            CalculatedDivision = CalculateDivision(dbTeam.Players, ctfConfig),
         });
     }
 
@@ -384,5 +383,30 @@ public partial class TeamController(
         var buf = new byte[32];
         Random.GetBytes(buf);
         return Convert.ToHexString(buf);
+    }
+
+    private Team ToModelTeam(Db.Team team) => new()
+    {
+        Id = team.Id,
+        Name = team.Name,
+        Players = team.Players.Select(p => p.Id).ToList(),
+        CalculatedDivision = CalculateDivision(team.Players, ctfConfig),
+    };
+
+    /// <summary>
+    /// A team's division is the division shared by all of its members, or <see
+    /// cref="CtfConfig.DivisionDefault"/> when the members haven't all selected the same one.
+    /// Returns null when divisions aren't configured.
+    /// </summary>
+    internal static string? CalculateDivision(IEnumerable<Db.Player> players, CtfConfig ctfConfig)
+    {
+        if (ctfConfig.DivisionAttribute == null)
+            return null;
+        var divisions = players
+            .Select(p => p.Attributes?.FirstOrDefault(a => a.Name == ctfConfig.DivisionAttribute)?.Value)
+            .ToList();
+        if (divisions.Count > 0 && divisions.All(d => d != null && d == divisions[0]))
+            return divisions[0];
+        return ctfConfig.DivisionDefault;
     }
 }

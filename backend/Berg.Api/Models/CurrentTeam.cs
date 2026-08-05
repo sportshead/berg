@@ -15,4 +15,7 @@ public class CurrentTeam
 
     [JsonPropertyName("players")]
     public List<Guid> Players { get; set; } = [];
+
+    [JsonPropertyName("calculatedDivision")]
+    public string? CalculatedDivision { get; set; }
 }
