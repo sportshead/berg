@@ -98,6 +98,70 @@ public class PlayerController(CtfConfig ctfConfig,
                 return BadRequest(new ProblemDetails { Title = "Bad Request", Detail = $"Invalid attribute value: {attr.Value}"});
         }
 
+        // Once the division is locked, players can no longer change it (admins override via the
+        // admin endpoint). Resubmitting the same value is allowed as a no-op.
+        if (ctfConfig.DivisionAttribute != null &&
+            ctfConfig.DivisionLockTime is { } lockTime && DateTime.UtcNow >= lockTime &&
+            attrUpdate.Attributes.TryGetValue(ctfConfig.DivisionAttribute, out var newDivision))
+        {
+            var currentDivision = player.Attributes
+                .FirstOrDefault(a => a.Name == ctfConfig.DivisionAttribute)?.Value;
+            if (newDivision != currentDivision)
+                return BadRequest(new ProblemDetails { Title = "Bad Request", Detail = "The division can no longer be changed" });
+        }
+
+        foreach (var pair in attrUpdate.Attributes)
+        {
+            var existingAttr = player.Attributes.FirstOrDefault(a => a.Name == pair.Key);
+            if (existingAttr != null)
+            {
+                existingAttr.Value = pair.Value;
+            }
+            else
+            {
+                player.Attributes.Add(new Db.PlayerAttribute()
+                {
+                    Player = player,
+                    Name = pair.Key,
+                    Value = pair.Value
+                });
+            }
+        }
+        dbContext.SaveChanges();
+
+        var _ = mediator.Publish(new PlayerUpdateNotification
+        {
+            DbPlayer = player
+        });
+
+        return Ok();
+    }
+
+
+    [HttpPatch]
+    [Route("/api/players/{id:guid}")]
+    [Authorize(Policy = Constants.Policies.Admin)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult AdminUpdatePlayerAttributes([FromRoute] Guid id, AttributesUpdateRequest attrUpdate)
+    {
+        var player = dbContext.Players
+            .Include(p => p.Attributes)
+            .FirstOrDefault(p => p.Id == id);
+        if (player == null)
+            return NotFound();
+
+        var configAttributesByName = ctfConfig.PlayerAttributes?
+            .ToDictionary(a => a.Name) ?? [];
+        foreach (var attr in attrUpdate.Attributes)
+        {
+            if (!configAttributesByName.TryGetValue(attr.Key, out var configAttr))
+                return BadRequest(new ProblemDetails { Title = "Bad Request", Detail = $"Invalid attribute name: {attr.Key}" });
+            if (!configAttr.Values.Select(v => v.Value).Contains(attr.Value))
+                return BadRequest(new ProblemDetails { Title = "Bad Request", Detail = $"Invalid attribute value: {attr.Value}" });
+        }
+
+        // Admins bypass DivisionLockTime by design so divisions can be corrected at any point.
         foreach (var pair in attrUpdate.Attributes)
         {
             var existingAttr = player.Attributes.FirstOrDefault(a => a.Name == pair.Key);
