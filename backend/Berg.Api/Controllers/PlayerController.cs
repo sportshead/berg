@@ -208,10 +208,14 @@ public class PlayerController(CtfConfig ctfConfig,
 
     internal static HashSet<string> GetPublicCustomAttributeNames(CtfConfig ctfConfig)
     {
-        return ctfConfig.PlayerAttributes?
+        var names = ctfConfig.PlayerAttributes?
             .Where(a => a.Public)
             .Select(a => a.Name)
             .ToHashSet() ?? [];
+        // The division attribute is always public so it can drive the per-division scoreboard.
+        if (ctfConfig.DivisionAttribute != null)
+            names.Add(ctfConfig.DivisionAttribute);
+        return names;
     }
 
     internal static Player ToModelPlayer(Db.Player player, HashSet<string> publicCustomAttributeNames)

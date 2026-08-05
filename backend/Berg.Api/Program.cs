@@ -16,6 +16,12 @@ builder.WebHost.ConfigureKestrel(o => o.AddServerHeader = false);
 
 var ctfConfig = new CtfConfig();
 builder.Configuration.GetSection("Ctf").Bind(ctfConfig);
+if (ctfConfig.DivisionAttribute != null &&
+    ctfConfig.PlayerAttributes?.Any(a => a.Name == ctfConfig.DivisionAttribute) != true)
+{
+    throw new InvalidOperationException(
+        $"Ctf:DivisionAttribute '{ctfConfig.DivisionAttribute}' does not match any configured Ctf:PlayerAttributes name.");
+}
 builder.Services.AddSingleton(ctfConfig);
 
 var infraConfig = new InfraConfig();

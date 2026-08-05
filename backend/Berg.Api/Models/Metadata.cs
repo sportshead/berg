@@ -37,6 +37,15 @@ public class Metadata
     [JsonPropertyName("teams")]
     public bool Teams { get; set; }
 
+    [JsonPropertyName("divisionAttribute")]
+    public string? DivisionAttribute { get; set; }
+
+    [JsonPropertyName("divisionDefault")]
+    public string? DivisionDefault { get; set; }
+
+    [JsonPropertyName("divisionLockTime")]
+    public DateTime? DivisionLockTime { get; set; }
+
     [JsonPropertyName("challengeMaximumValue")]
     public int ChallengeMaximumValue { get; set; }
 

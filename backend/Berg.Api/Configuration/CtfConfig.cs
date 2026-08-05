@@ -11,6 +11,24 @@ public class CtfConfig
     public bool AllowAnonymousAccess { get; set; } = true;
     public Scoring Scoring { get; set; } = new();
     public List<PlayerAttribute>? PlayerAttributes { get; set; }
+
+    /// <summary>
+    /// The <see cref="PlayerAttribute.Name"/> of the attribute that designates a player's prize
+    /// division. When set, this attribute is always treated as public and drives the per-division
+    /// scoreboard. Leave null to disable divisions.
+    /// </summary>
+    public string? DivisionAttribute { get; set; }
+
+    /// <summary>
+    /// The division value used for a team whose members don't all share the same division.
+    /// </summary>
+    public string? DivisionDefault { get; set; }
+
+    /// <summary>
+    /// After this time, non-admin players can no longer change their division attribute. Null means
+    /// players can change it for the duration of the event.
+    /// </summary>
+    public DateTime? DivisionLockTime { get; set; }
 }
 
 
