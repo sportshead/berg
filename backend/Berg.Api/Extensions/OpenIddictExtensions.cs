@@ -93,7 +93,7 @@ public class DynamicAuthenticatedUserAuthorizationHandler(
             else
             {
                 context.Fail(new AuthorizationFailureReason(this, "Anonymous access is disabled and the user is logged in but doesn't have at least the player role."));
-                logger.LogDebug("Anonymous access is disabled and the user is logged in but doesn't have at least the player role. The user has the following roles: {Roles}", string.Join(",", roleClaims));
+                logger.LogDebug("Anonymous access is disabled and player {PlayerId} is logged in but doesn't have at least the player role. The player has the following roles: {Roles}", context.User.GetClaim(Claims.Subject), string.Join(",", roleClaims));
             }
         }
         return Task.CompletedTask;

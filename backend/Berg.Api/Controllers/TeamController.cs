@@ -350,7 +350,7 @@ public partial class TeamController(
         {
             dbContext.Teams.Remove(previousTeam);
             metrics.TeamDeleted();
-            logger.LogInformation("Deleting Team {TeamId} since there are no more players in it.", previousTeam.Id);
+            logger.LogInformation("Deleting Team {TeamId} since there are no more players in it after player {PlayerId} left.", previousTeam.Id, playerId);
         }
         await dbContext.SaveChangesAsync();
 

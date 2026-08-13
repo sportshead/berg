@@ -12,19 +12,19 @@ public class DiscordSolveNotificationHandler(
     {
         if (string.IsNullOrEmpty(discordConfig.BotToken))
         {
-            logger.LogDebug("Skipping discord solve notification due to missing bot token.");
+            logger.LogDebug("Skipping discord solve notification of player {PlayerId} due to missing bot token.", solve.PlayerId);
             return;
         }
 
         if (solve.IsFrozen)
         {
-            logger.LogDebug("Skipping discord solve notification due to an active freeze.");
+            logger.LogDebug("Skipping discord solve notification of player {PlayerId} due to an active freeze.", solve.PlayerId);
             return;
         }
 
         if (solve.IsAdmin)
         {
-            logger.LogDebug("Skipping discord solve notification due to an admin solve.");
+            logger.LogDebug("Skipping discord solve notification due to an admin solve by player {PlayerId}.", solve.PlayerId);
             return;
         }
 
@@ -33,13 +33,13 @@ public class DiscordSolveNotificationHandler(
 
         if (await client.GetChannelAsync(discordConfig.NotificationChannelId) is not IMessageChannel channel)
         {
-            logger.LogError("Invalid channel id configured, did not send solve notification.");
+            logger.LogError("Invalid channel id configured, did not send solve notification for player {PlayerId}.", solve.PlayerId);
             return;
         }
         var guild = await client.GetGuildAsync(discordConfig.NotificationGuildId);
         if (guild == null)
         {
-            logger.LogError("Invalid guild id configured, did not send solve notification.");
+            logger.LogError("Invalid guild id configured, did not send solve notification for player {PlayerId}.", solve.PlayerId);
             return;
         }
 

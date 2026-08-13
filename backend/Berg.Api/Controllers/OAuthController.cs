@@ -79,6 +79,8 @@ public class OAuthController(
             var identity = CreateClaimsIdentityForPlayer(player, Constants.LoginTypes.ApiKey,
                 player.Roles ?? []);
 
+            logger.LogInformation("Player {PlayerId} logged in via API key from {ClientIp}", player.Id, GetClientIp());
+
             return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
         if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
@@ -351,6 +353,8 @@ public class OAuthController(
 
         var player = GetOrCreatePlayerByFederatedId(userId, username, email, roles);
 
+        logger.LogInformation("Player {PlayerId} logged in via federation from {ClientIp}", player.Id, GetClientIp());
+
         var identity = CreateClaimsIdentityForPlayer(player, Constants.LoginTypes.Federation,
             roles);
         var properties = new AuthenticationProperties
@@ -381,8 +385,20 @@ public class OAuthController(
             });
         }
 
+        var playerId = result.Principal?.FindFirstValue(OpenIddictConstants.Claims.Subject);
+        logger.LogInformation("Player {PlayerId} logged out from {ClientIp}", playerId, GetClientIp());
+
         return SignOut(CookieAuthenticationDefaults.AuthenticationScheme,
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>
+    /// Reads the originating client ip from the Cf-Connecting-Ip header set by Cloudflare
+    /// </summary>
+    /// <returns>The client ip, or null if the header is not present</returns>
+    private string? GetClientIp()
+    {
+        return HttpContext.Request.Headers["Cf-Connecting-Ip"].FirstOrDefault();
     }
 
     /// <summary>
@@ -418,6 +434,7 @@ public class OAuthController(
                 DbPlayer = player,
             });
             metrics.PlayerCreated(player.Id);
+            logger.LogInformation("Player {PlayerId} registered from {ClientIp}", player.Id, GetClientIp());
         }
         else
         {

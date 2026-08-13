@@ -4,7 +4,7 @@ namespace Berg.Api.Services;
 
 public interface IDynamicFlagExecutableService
 {
-    byte[] GenerateExecutable(string flag);
+    byte[] GenerateExecutable(string flag, Guid playerId);
 }
 
 public class DynamicFlagExecutableService(
@@ -39,11 +39,12 @@ public class DynamicFlagExecutableService(
     /// Thanks to some ELF trickery, the generated files are very small: 145 bytes + flag byte length
     /// </summary>
     /// <param name="flag">The flag to print</param>
+    /// <param name="playerId">The id of the player the flag belongs to</param>
     /// <returns>A statically linked ELF binary that prints the flag when executed</returns>
-    public byte[] GenerateExecutable(string flag)
+    public byte[] GenerateExecutable(string flag, Guid playerId)
     {
         using var activity = Constants.BergActivitySource.StartActivity();
-        logger.LogDebug("Generating dynamic flag executable with flag: {Flag}", flag);
+        logger.LogDebug("Generating dynamic flag executable for player {PlayerId} with flag: {Flag}", playerId, flag);
 
         var flagBytes = Encoding.UTF8.GetBytes(flag+"\n");
         var flagLength = flagBytes.Length;
